@@ -28,7 +28,8 @@ Output depends on the **Mode** setting:
 ## Requirements
 
 - Emby Server **4.9.x** (built/tested against 4.9.5.0, Windows & Linux).
-- Intro Detection already run on your shows (that's where the markers come from).
+- Intro Detection already run on your shows for theme generation (it supplies local marker data).
+  Local and online marker import can instead add validated markers to eligible unmarked `.strm` episodes.
 - A **bare-metal / VM** install where Emby can write into your series folders. (In container/NAS
   setups where the series folders aren't writable by the server, it can't drop the theme files.)
 
@@ -51,8 +52,23 @@ Everything runs from **Dashboard → Scheduled Tasks**:
   (source episode, intro span, whether a theme already exists) without writing anything. Run this
   first.
 - **Theme Maker: Generate** — actually encodes the theme files, per your settings.
+- **Theme Maker: Preview Local and Online Intro Markers (read-only)** - reports valid intro candidates
+  for eligible `.strm` episodes without changing chapters.
+- **Theme Maker: Apply Local and Online Intro Markers** - writes validated `IntroStart` and `IntroEnd`
+  markers for those candidates. Run the preview first.
 
-Add a trigger to either (daily / interval / on startup) to run it on a schedule, or run on demand.
+The local and online marker tasks have no automatic schedule. Run them on demand or add your own
+trigger. They first look for local, non-`.strm` episodes with valid markers. A local source must share
+a parent-series TMDb ID, TVDb ID, or IMDb ID plus season and episode. If both runtimes are known, they
+must be within the larger of five seconds or one percent. A missing `.strm` runtime is allowed, while a
+known mismatch is rejected. Conflicting local marker ranges are rejected and TheIntroDB remains the
+fallback. The task never matches by title, opens a `.strm`
+file, or reads its media URL. `Only under this folder` restricts target series only; local references
+may come from the whole library. Local matching checks all eligible episodes. The online fallback tries
+only a small configured number per series. Each path stops after its first previewed or applied
+candidate. Existing intro markers always win, and applying a new pair preserves every existing chapter.
+
+Add a trigger to any task (daily / interval / on startup) to run it on a schedule, or run on demand.
 All activity is logged to the Emby log with a `[ThemeMaker]` prefix.
 
 ## Settings (Dashboard → Theme Maker)
@@ -72,6 +88,12 @@ All activity is logged to the Emby log with a `[ThemeMaker]` prefix.
 | **Output filenames / backdrop subfolder** | where and what to write |
 | **Parallel encodes** | how many ffmpeg jobs at once |
 | **Scan library after generating** | trigger one Emby scan at the end so new themes register |
+| **Online marker lookups per run** | Maximum TheIntroDB requests per marker preview/apply run (default 200) |
+| **Online marker episodes per series** | Maximum eligible `.strm` episodes tried for each series (default 3) |
+| **Online marker delay between calls** | Minimum wait between TheIntroDB requests in milliseconds (minimum/default 400) |
+
+The online fallback sends only a provider ID, season, episode, and the stored runtime when available to
+TheIntroDB. It stops further online lookups for the run when the service returns HTTP 429.
 
 Safe by default: it never overwrites an existing theme unless **Overwrite** is on, and it never
 deletes a song out of a curated `theme-music/` folder.
