@@ -27,14 +27,14 @@ namespace EmbyThemeMaker
             _optionsStore = new ThemeMakerOptionsStore(applicationHost, logger, Name);
             Instance = this;
             logger.Info("[ThemeMaker] plugin loaded. Run it from Dashboard -> Scheduled Tasks: " +
-                        "\"Theme Maker: Generate\" or \"Theme Maker: Preview (read-only)\".");
+                        "\"Theme Maker: Generate\", \"Theme Maker: Preview (read-only)\", or a local and online intro marker task.");
         }
 
         public override string Name => "Theme Maker";
 
         public override string Description =>
-            "Generate per-series theme videos and music from Emby intro markers, using the " +
-            "server's built-in ffmpeg. Runs from Scheduled Tasks.";
+            "Generate per-series theme videos and music from Emby intro markers, or safely import " +
+            "local and online intro markers for eligible .strm episodes. Runs from Scheduled Tasks.";
 
         public override Guid Id => new Guid("3132e1e1-5884-4478-8b20-b1db7de27b25");
 

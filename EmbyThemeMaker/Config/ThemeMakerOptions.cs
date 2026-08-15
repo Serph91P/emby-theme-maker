@@ -91,6 +91,28 @@ namespace EmbyThemeMaker.Config
         [Description("Optional 3-letter tag (e.g. jpn, eng). Picks that audio stream if present; blank = first stream.")]
         public string AudioLang { get; set; } = string.Empty;
 
+        // ----- Local and online intro marker import -----
+
+        public CaptionItem OnlineIntroCaption { get; set; } = new CaptionItem("Local and online intro marker import");
+
+        [DisplayName("Online marker lookups per run")]
+        [Description("Maximum TheIntroDB requests for one Preview or Apply run. Runtime-capped at 400. Default 200.")]
+        [MinValue(1)]
+        [MaxValue(400)]
+        public int OnlineIntroMaxLookups { get; set; } = 200;
+
+        [DisplayName("Online marker episodes per series")]
+        [Description("Try at most this many eligible .strm episodes for each series, stopping after the first imported intro. Default 3.")]
+        [MinValue(1)]
+        [MaxValue(20)]
+        public int OnlineIntroMaxEpisodesPerSeries { get; set; } = 3;
+
+        [DisplayName("Online marker delay between calls (ms)")]
+        [Description("Wait this long between TheIntroDB requests. Runtime minimum 400 ms.")]
+        [MinValue(400)]
+        [MaxValue(60000)]
+        public int OnlineIntroDelayMilliseconds { get; set; } = 400;
+
         // ----- Encode -----
 
         public CaptionItem EncodeCaption { get; set; } = new CaptionItem("Encoding");
