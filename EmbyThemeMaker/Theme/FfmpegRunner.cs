@@ -45,6 +45,62 @@ namespace EmbyThemeMaker.Theme
         /// <summary>Audio output extensions this runner can actually mux (for settings validation).</summary>
         public static IReadOnlyCollection<string> SupportedAudioExts => (IReadOnlyCollection<string>)AudioCodecByExt.Keys;
 
+        internal static string BuildBundledLibraryPath(
+            string executable,
+            string existingValue,
+            Func<string, bool> directoryExists,
+            bool isUnix)
+        {
+            if (!isUnix || string.IsNullOrWhiteSpace(executable))
+            {
+                return existingValue;
+            }
+
+            var binDirectory = Path.GetDirectoryName(executable);
+            var installDirectory = string.IsNullOrWhiteSpace(binDirectory)
+                ? null
+                : Directory.GetParent(binDirectory)?.FullName;
+            if (string.IsNullOrWhiteSpace(installDirectory))
+            {
+                return existingValue;
+            }
+
+            var values = new List<string>();
+            foreach (var candidate in new[]
+            {
+                Path.Combine(installDirectory, "lib"),
+                Path.Combine(installDirectory, "extra", "lib"),
+            })
+            {
+                if (directoryExists(candidate))
+                {
+                    values.Add(candidate);
+                }
+            }
+
+            if (existingValue != null)
+            {
+                values.Add(existingValue);
+            }
+
+            return values.Count == 0 ? existingValue : string.Join(":", values);
+        }
+
+        private static void ConfigureBundledToolEnvironment(ProcessStartInfo startInfo, string executable)
+        {
+            const string variableName = "LD_LIBRARY_PATH";
+            var existingValue = startInfo.EnvironmentVariables[variableName];
+            var value = BuildBundledLibraryPath(
+                executable,
+                existingValue,
+                Directory.Exists,
+                Path.DirectorySeparatorChar == '/');
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                startInfo.EnvironmentVariables[variableName] = value;
+            }
+        }
+
         private readonly IFfmpegManager _ffmpegManager;
         private readonly ILogger _logger;
 
@@ -198,7 +254,7 @@ namespace EmbyThemeMaker.Theme
                 }
                 else
                 {
-                    // No stream tagged with the requested language — fall back to the first, but say
+                    // No stream tagged with the requested language. Fall back to the first, but say
                     // so, since a wrong tag (e.g. "english"/"jp" instead of "eng"/"jpn") is silent otherwise.
                     _logger.Info("[ThemeMaker] no audio stream tagged '{0}' in {1}; using the first stream",
                         cfg.AudioLang, redactStrmTarget ? StrmResolver.RedactedTarget : src);
@@ -302,6 +358,7 @@ namespace EmbyThemeMaker.Theme
                 RedirectStandardError = true,
                 CreateNoWindow = true,
             };
+            ConfigureBundledToolEnvironment(psi, ffmpeg);
             psi.Arguments = string.Join(" ", args.Select(QuoteArg));
 
             using (var proc = new Process { StartInfo = psi })
@@ -389,6 +446,7 @@ namespace EmbyThemeMaker.Theme
                     RedirectStandardError = true,
                     CreateNoWindow = true,
                 };
+                ConfigureBundledToolEnvironment(psi, ffprobe);
                 var args = new[]
                 {
                     "-v", "error", "-select_streams", "a",
